@@ -1,7 +1,23 @@
 from math import exp
+from typing import Tuple, NamedTuple, Generator
 
 
-def calculate_imp(input_dat, consts, ranges):
+class Constants(NamedTuple):
+    L: float
+    F: float
+    S1: float
+    S2: float
+    S3: float
+
+
+Tuple3float = Tuple[float, float, float]
+
+
+def calculate_imp(
+        input_dat: Tuple3float,
+        consts: Constants,
+        ranges: Tuple3float,
+) -> Tuple3float:
     x, y, z = input_dat
     L, F, S1, S2, S3 = consts.L, consts.F, consts.S1, consts.S2, consts.S3
 
@@ -23,7 +39,11 @@ def calculate_imp(input_dat, consts, ranges):
     return x, y, z
 
 
-def calculate_pause(input_dat, consts, ranges):
+def calculate_pause(
+        input_dat: Tuple3float,
+        consts: Constants,
+        ranges: Tuple3float,
+) -> Tuple3float:
     x, y, z = input_dat
     L = consts.L
 
@@ -35,7 +55,11 @@ def calculate_pause(input_dat, consts, ranges):
     return x, y, z
 
 
-def arange(t0, tm, td):
+def arange(
+        t0: float,
+        tm: float,
+        td: float
+) -> Generator[float, None, None]:
     t = t0
     while t < tm:
         yield t

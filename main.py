@@ -34,7 +34,7 @@ def generate(db_holder, _):
 
     current_mode = Mode.IMPULSE
     x, y, z = Settings.get_start_point()
-    data_to_push = [(x, y, z, 0, True)]
+    data_to_push = list()
 
     LOGGER.info('Start')
     t, t_max = 0, Settings.calc
@@ -54,6 +54,9 @@ def generate(db_holder, _):
             data_to_push.clear()
 
         current_mode = Mode.IMPULSE if current_mode == Mode.PAUSE else Mode.PAUSE
+
+    if data_to_push:
+        db_holder.push(data_to_push)
     LOGGER.info('Stop')
 
 
