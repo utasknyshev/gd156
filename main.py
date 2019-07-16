@@ -4,7 +4,7 @@ from signal import signal, SIGTERM, SIGINT
 from logging import getLogger, INFO, StreamHandler
 from sys import stdout
 
-from functions import calculate_imp, calculate_pause, arange
+from functions import calculate_imp, calculate_pause
 from db import DatabaseHolder, DBError
 from settings import Settings
 
@@ -14,90 +14,47 @@ class Mode(Enum):
     PAUSE = 2
 
 
-MODE_LENGTHES = {
-    Mode.IMPULSE: Settings.time.impulse,
-    Mode.PAUSE: Settings.time.pause,
-}
-MODE_FUNCTIONS = {
-    Mode.IMPULSE: calculate_imp,
-    Mode.PAUSE: calculate_pause,
-}
-
 LOGGER = getLogger('Main')
 LOGGER.addHandler(StreamHandler(stdout))
 CONTINUE = True
 
 
 def generate(db_holder, _):
-    mode_length = Settings.time.impulse
+
+    mode_lengths = {
+        Mode.IMPULSE: Settings.impulse,
+        Mode.PAUSE: Settings.pause,
+    }
+    mode_functions = {
+        Mode.IMPULSE: calculate_imp,
+        Mode.PAUSE: calculate_pause,
+    }
+
+    consts = Settings.get_consts()
+
     current_mode = Mode.IMPULSE
-    x, y, z = Settings.x, Settings.y, Settings.z
+    x, y, z = Settings.get_start_point()
     data_to_push = [(x, y, z, 0, True)]
 
     LOGGER.info('Start')
-    for t in arange(0, Settings.time.calc, Settings.time.disc):
-        if not CONTINUE:
-            LOGGER.info('Halt')
-            break
+    t, t_max = 0, Settings.calc
+    while t < t_max:
+        x, y, z = mode_functions[current_mode](
+            (x, y, z),
+            consts,
+            (t, t + mode_lengths[current_mode], Settings.disc),
+        )
+        t += mode_lengths[current_mode]
 
-        if mode_length <= 0.0:
-            current_mode = Mode.IMPULSE if current_mode == Mode.PAUSE else Mode.PAUSE
+        LOGGER.info((x, y, z, t, current_mode == Mode.IMPULSE))
+        data_to_push.append((x, y, z, t, current_mode == Mode.IMPULSE))
 
-        nx, ny, nz = MODE_FUNCTIONS[current_mode](x, y, z, t)
+        if len(data_to_push) >= Settings.chank_size:
+            db_holder.push(data_to_push)
+            data_to_push.clear()
 
-        if mode_length <= 0.0:
-            mode_length = MODE_LENGTHES[current_mode]
-            data_to_push.append((nx, ny, nz, t, current_mode == Mode.IMPULSE))
-            LOGGER.info('%f x=%f, y=%f, z=%f', t, nx, ny, nz)
-            if len(data_to_push) >= Settings.general.chank_size:
-                db_holder.push(data_to_push)
-                data_to_push.clear()
-
-        if current_mode == Mode.IMPULSE:
-            x, y, z = nx, ny, nz
-
-        mode_length -= Settings.time.disc
-    else:
-        LOGGER.info('Stop')
-
-
-def degenerate(db_holder, _):
-    data_to_push = list()
-
-    last = db_holder.get_last_calculation()
-    x, y, z, t0, impulse = last if last is not None else (Settings.x, Settings.y, Settings.z, 0, True)
-    if not impulse:
-        mode_length = Settings.time.pause
-        current_mode = Mode.PAUSE
-    else:
-        mode_length = Settings.time.impulse
-        current_mode = Mode.IMPULSE
-
-    LOGGER.info('Start')
-    for t in arange(t0, Settings.time.calc, Settings.time.disc):
-        if not CONTINUE:
-            LOGGER.info('Halt')
-            break
-
-        if mode_length <= 0.0:
-            current_mode = Mode.IMPULSE if current_mode == Mode.PAUSE else Mode.PAUSE
-
-        nx, ny, nz = MODE_FUNCTIONS[current_mode](x, y, z, t)
-
-        if mode_length <= 0.0:
-            mode_length = MODE_LENGTHES[current_mode]
-            data_to_push.append((nx, ny, nz, t, current_mode == Mode.IMPULSE))
-            LOGGER.info('%f x=%f, y=%f, z=%f', t, nx, ny, nz)
-            if len(data_to_push) >= Settings.general.chank_size:
-                db_holder.push(data_to_push)
-                data_to_push.clear()
-
-        if current_mode == Mode.IMPULSE:
-            x, y, z = nx, ny, nz
-
-        mode_length -= Settings.time.disc
-    else:
-        LOGGER.info('Stop')
+        current_mode = Mode.IMPULSE if current_mode == Mode.PAUSE else Mode.PAUSE
+    LOGGER.info('Stop')
 
 
 def sig_handler(sig, frame):
@@ -107,7 +64,6 @@ def sig_handler(sig, frame):
 
 commands_list = {
     'generate': generate,
-    'degenerate': degenerate,
 }
 
 

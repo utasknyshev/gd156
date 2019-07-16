@@ -1,68 +1,41 @@
 from math import exp
-from typing import Tuple, Union, Iterable
-
-from settings import Settings
 
 
-def add_settings(function):
-    return lambda x, y, z, t: function(x, y, z, t, Settings)
+def calculate_imp(input_dat, consts, ranges):
+    x, y, z = input_dat
+    L, F, S1, S2, S3 = consts.L, consts.F, consts.S1, consts.S2, consts.S3
+
+    for t in arange(*ranges):
+        ds12 = S1 - S2
+        exp_s1ft = exp(-S1 * F * t)
+        exp_lmbt = exp(-L * t)
+        exp_fs3t = exp(-F * S3 * t)
+
+        lz_1 = exp_s1ft / (L - S1 * F) / (F * S3 - S1 * F)
+        lz_2 = exp_lmbt / (S1 * F - L) / (F * S3 - L)
+        lz_3 = exp_fs3t / (S1 * F - S3 * F) / (L - S3 * F)
+
+        x_n = x * exp_s1ft
+        y_n = (x * F * ds12) / (L - F * S1) * (exp_s1ft - exp_lmbt) + y * exp_lmbt
+        z_n = x * F * ds12 * L * sum((lz_1, lz_2, lz_3)) + z * exp_fs3t
+
+        x, y, z = x_n, y_n, z_n
+    return x, y, z
 
 
-@add_settings
-def calculate_imp(
-        x: float,
-        y: float,
-        z: float,
-        t: float,
-        p,
-) -> Tuple[float, float, float]:
-    """
-    Функция расчета X(t), y(t), z(t) при подаче импульса
-    """
-    ds12 = p.S1 - p.S2
-    exp_s1ft = exp(-p.S1 * p.F * t)
-    exp_lmbt = exp(-p.L * t)
-    exp_fs3t = exp(-p.F * p.S3 * t)
+def calculate_pause(input_dat, consts, ranges):
+    x, y, z = input_dat
+    L = consts.L
 
-    lz_1 = exp_s1ft / (p.L - p.S1 * p.F) / (p.F * p.S3 - p.S1 * p.F)
-    lz_2 = exp_lmbt / (p.S1 * p.F - p.L) / (p.F * p.S3 - p.L)
-    lz_3 = exp_fs3t / (p.S1 * p.F - p.S3 * p.F) / (p.L - p.S3 * p.F)
-
-    x_n = x * exp_s1ft
-    y_n = (x * p.F * ds12) / (p.L - p.F * p.S1) * (exp_s1ft - exp_lmbt) + y * exp_lmbt
-    z_n = x * p.F * ds12 * p.L * sum((lz_1, lz_2, lz_3)) + z * exp_fs3t
-    return x_n, y_n, z_n
+    for t in arange(*ranges):
+        exp_lmbt = exp(-L * t)
+        y_n = y * exp_lmbt
+        z_n = z + y * (1 - exp_lmbt)
+        y, z = y_n, z_n
+    return x, y, z
 
 
-@add_settings
-def calculate_pause(
-        x: float,
-        y: float,
-        z: float,
-        t: float,
-        p,
-) -> Tuple[float, float, float]:
-    """
-    Функция расчета X(t), y(t), z(t) при отсутствии импульса
-    """
-    exp_lmbt = exp(-p.L * t)
-    y_n = y * exp_lmbt
-    z_n = z + y * (1 - exp_lmbt)
-    return x, y_n, z_n
-
-
-def arange(
-        t0: Union[float, int],
-        tm: Union[float, int],
-        td: Union[float, int],
-) -> Iterable[float]:
-    """
-        float range with generator
-    :param t0: start
-    :param tm: end
-    :param td: distance
-    :return:
-    """
+def arange(t0, tm, td):
     t = t0
     while t < tm:
         yield t
