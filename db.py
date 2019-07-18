@@ -11,6 +11,7 @@ from models import Base, Calculation
 
 CONNECTION_TRIES = 3
 TRIES_TIMEOUT = 1
+TupleCalc = Tuple[float, float, float, float, bool]
 
 
 class DBError(Exception):
@@ -31,7 +32,7 @@ class DatabaseHolder:
         self.session_factory = sessionmaker()
         self.session_factory.configure(bind=self.db)
 
-    def push(self, data: List[Tuple[float, float, float, float, bool]]) -> None:
+    def push(self, data: List[TupleCalc]) -> None:
         session = self.session_factory()
 
         try:
@@ -42,7 +43,7 @@ class DatabaseHolder:
         except Exception as error:
             raise DBError('DB error on push: {}'.format(error))
 
-    def get_last_calculation(self) -> Optional[Tuple[float, float, float, float, bool]]:
+    def get_last_calculation(self) -> Optional[TupleCalc]:
         session = self.session_factory()
 
         try:
@@ -56,6 +57,27 @@ class DatabaseHolder:
             if calculation:
                 return calculation.x, calculation.y, calculation.z, calculation.t, calculation.mode
             return None
+        except Exception as error:
+            raise DBError('DB error on select: {}'.format(error))
+
+    def get_calculation_in_range(
+            self,
+            t_range: Tuple[float, float]
+    ) -> List[TupleCalc]:
+        session = self.session_factory()
+
+        try:
+            t_min, t_max = t_range
+            fields = ['x', 'y', 'z', 't', 'mode']
+            calculations = session.query(Calculation).options(
+                load_only(*fields)
+            ).filter(
+                Calculation.t >= t_min
+            ).filter(
+                Calculation.t <= t_max
+            ).order_by(Calculation.t).all()
+
+            return [(c.x, c.y, c.z, c.t, c.mode) for c in calculations]
         except Exception as error:
             raise DBError('DB error on select: {}'.format(error))
 

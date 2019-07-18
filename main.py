@@ -34,10 +34,15 @@ def generate(db_holder, _):
 
     current_mode = Mode.IMPULSE
     x, y, z = Settings.get_start_point()
+    t, t_max = 0, Settings.calc
     data_to_push = list()
 
+    last_calculation = db_holder.get_last_calculation()
+    if last_calculation:
+        x, y, z, t, is_impulse = last_calculation
+        current_mode = Mode.PAUSE if is_impulse else Mode.IMPULSE
+
     LOGGER.info('Start')
-    t, t_max = 0, Settings.calc
     while t < t_max:
         x, y, z = mode_functions[current_mode](
             (x, y, z),

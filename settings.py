@@ -82,6 +82,6 @@ Settings.conf = {
         'base': 'science',
         'user': 'postgres',
         'password': 'postgres',
-        'engine': 'postgresql',
+        'engine': 'postgresql+psycopg2cffi',
     },
 }
