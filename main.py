@@ -4,7 +4,7 @@ from signal import signal, SIGTERM, SIGINT
 from logging import getLogger, INFO, StreamHandler
 from sys import stdout
 
-from functions import calculate_imp, calculate_pause
+from functions import calculate_imp, calculate_pause, calculate_borders
 from db import DatabaseHolder, DBError
 from settings import Settings
 
@@ -65,6 +65,15 @@ def generate(db_holder, _):
     LOGGER.info('Stop')
 
 
+def border(db_holder, _):
+    calculate_borders(
+        Settings.get_start_point(),
+        Settings.get_consts(),
+        (0, Settings.calc, Settings.disc),
+        db_holder,
+    )
+
+
 def sig_handler(sig, frame):
     global CONTINUE
     CONTINUE = False
@@ -72,6 +81,7 @@ def sig_handler(sig, frame):
 
 commands_list = {
     'generate': generate,
+    'border': border,
 }
 
 
